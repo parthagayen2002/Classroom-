@@ -19,6 +19,7 @@ import { Bloom, EffectComposer } from '@react-three/postprocessing';
 import { AnimatePresence, motion } from 'framer-motion';
 import * as THREE from 'three';
 import { useResponsiveTier } from '@/hooks/useResponsiveTier';
+import { usePointerCapabilities } from '@/hooks/usePointerCapabilities';
 import { PARALLAX, INTENSITY, DURATION, EASE } from '@/config/motion';
 
 // Blends a hex color toward white - used to derive each planet's rim-glow
@@ -843,6 +844,7 @@ function PlanetPanel({ planet, onClose, prefersReducedMotion }) {
 
 function SolarSystemInner({ edgeMask, sectionProgressRef }) {
   const { tier, prefersReducedMotion } = useResponsiveTier();
+  const { isTouchDevice } = usePointerCapabilities();
   const [selected, setSelected] = useState(null);
   // Tighter than a "true" wide shot on purpose: zoom is disabled (see the
   // OrbitControls comment below), so this default framing has to be close
@@ -881,8 +883,36 @@ function SolarSystemInner({ edgeMask, sectionProgressRef }) {
     if (selected) setSelected(null);
   };
 
+  // The exact DOM node OrbitControls attaches its own touch handling to -
+  // NOT the <canvas> tag itself and NOT this component's own outer wrapper
+  // div below, but an internal wrapper R3F renders in between (confirmed by
+  // inspecting the live DOM: it's the node carrying this Canvas's own
+  // `style` prop, i.e. `gl.domElement.parentElement.parentElement`).
+  // OrbitControls.connect() unconditionally sets that node's
+  // `touchAction = 'none'` via plain JS - independent of any prop or CSS
+  // this component applies - so a MutationObserver watching that exact
+  // node's style attribute (set up once here, in onCreated, where `gl` is
+  // first available) is what reliably wins the fight: whenever OrbitControls
+  // (re)asserts 'none', this immediately corrects it back to 'pan-y' on
+  // touch devices, regardless of effect/mount ordering between this
+  // component and OrbitControls' own.
+  const touchActionObserverRef = useRef(null);
+  useEffect(() => () => touchActionObserverRef.current?.disconnect(), []);
+
   return (
-    <div className="relative w-full h-full" style={{ touchAction: 'none' }}>
+    // touchAction here (this component's OWN outer wrapper, not the node the
+    // MutationObserver above targets) is a second, defensive layer - see
+    // that comment for the actual mechanism that matters. This Canvas fills
+    // the ENTIRE Home section on mobile (not a small bounded widget - see
+    // HeroSection.jsx), so leaving 'none' unconditionally here would also
+    // contribute to swallowing scroll swipes over nearly the whole screen.
+    // 'pan-y' explicitly reserves vertical panning for the browser's native
+    // scroll while still allowing horizontal gestures through to
+    // OrbitControls for rotation, and tap-to-select-planet (a real R3F
+    // click, independent of touchAction). Non-touch devices are unaffected -
+    // touchAction is meaningless without touch input - so 'none' is kept
+    // there to preserve the exact original desktop behaviour.
+    <div className="relative w-full h-full" style={{ touchAction: isTouchDevice ? 'pan-y' : 'none' }}>
       <Canvas
         dpr={[1, 2]}
         camera={{ position: [0, 5.5, cameraDistance], fov: 38, near: 0.1, far: 100 }}
@@ -903,7 +933,19 @@ function SolarSystemInner({ edgeMask, sectionProgressRef }) {
         // itself to transparent well before its rectangular edges - that's
         // independent of anything happening inside WebGL and is guaranteed
         // to blend cleanly.
-        onCreated={({ gl }) => gl.setClearColor(0x020205, 1)}
+        onCreated={({ gl }) => {
+          gl.setClearColor(0x020205, 1);
+          const target = gl.domElement.parentElement?.parentElement;
+          if (target && isTouchDevice) {
+            const enforce = () => {
+              if (target.style.touchAction !== 'pan-y') target.style.touchAction = 'pan-y';
+            };
+            enforce();
+            const observer = new MutationObserver(enforce);
+            observer.observe(target, { attributes: true, attributeFilter: ['style'] });
+            touchActionObserverRef.current = observer;
+          }
+        }}
         style={edgeMask ? { maskImage: edgeMask, WebkitMaskImage: edgeMask } : undefined}
         onPointerMissed={handlePointerMissed}
       >
@@ -948,6 +990,17 @@ function SolarSystemInner({ edgeMask, sectionProgressRef }) {
             mouse directly while the button is held. The only real cost is
             losing a bit of coast-on-release inertia, which matters much
             less than the drag itself feeling connected to the pointer. */}
+        {/* Always rendered, including on touch - one-finger rotate should
+            still work via a deliberate HORIZONTAL drag, only vertical
+            swipes need to be reserved for page scroll (see the touchAction
+            comment above and the MutationObserver note on the Canvas
+            below). three.js's OrbitControls.connect() sets
+            `domElement.style.touchAction = 'none'` directly via JS the
+            moment it mounts (confirmed by reading
+            three/examples/jsm/controls/OrbitControls.js), unconditionally
+            overwriting whatever this component sets - that's what the
+            MutationObserver below corrects, on every mutation, not just
+            once at mount. */}
         <OrbitControls
           enableDamping={false}
           enableZoom={false}
@@ -959,7 +1012,11 @@ function SolarSystemInner({ edgeMask, sectionProgressRef }) {
 
       {/* Bottom-right rather than top-left: this widget now fills the full
           height of its section, and top-left would sit directly under the
-          fixed site nav. */}
+          fixed site nav. Same copy on every device - drag-to-rotate still
+          works on touch too now (horizontal drag specifically; vertical
+          stays reserved for page scroll, see the touchAction/OrbitControls
+          notes above), so there's no touch-specific behaviour left to call
+          out separately. */}
       <p className="absolute bottom-6 right-6 text-right text-[10px] font-mono uppercase tracking-widest text-slate-500 pointer-events-none">
         Compressed orbital scale — drag to explore
       </p>
