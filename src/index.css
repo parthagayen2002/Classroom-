@@ -1,0 +1,1258 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
+
+@theme {
+  --color-primary-red: #EF4444;
+  --color-primary-red-bright: #F87171;
+  --color-primary-red-dark: #DC2626;
+  --color-primary-red-deep: #7F1D1D;
+  --color-bg-primary: #020205;
+  --color-bg-secondary: #08080D;
+  --color-surface: #0A080D;
+  --color-surface-elevated: #120E18;
+  --color-dark-bg: #020205;
+  --color-dark-bg-elevated: #08080D;
+  --color-dark-card: #0A080D;
+  --color-dark-border: #211826;
+  --color-dark-border-hover: #FF2D95;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #D5D5DD;
+  --color-text-muted: #A6A6B3;
+  --color-text-accent: #FF2D95;
+  /* Compatibility aliases for existing utility classes. */
+  --color-primary-cyan: #FF2D95;
+  --color-primary-cyan-bright: #FF4FB3;
+  --color-primary-violet: #9B5CFF;
+  --color-primary-violet-bright: #B98CFF;
+
+  --font-sans: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-glow: glow 3s ease-in-out infinite;
+  --animate-rotate-slow: rotate 20s linear infinite;
+  --animate-scan: scan 2s linear infinite;
+  --animate-pulse-subtle: pulseSubtle 3s ease-in-out infinite;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-12px); }
+  }
+  @keyframes glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(255, 45, 149, 0.2); }
+    50% { box-shadow: 0 0 40px rgba(255, 45, 149, 0.4), 0 0 60px rgba(155, 92, 255, 0.2); }
+  }
+  @keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes scan {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+  @keyframes pulseSubtle {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+  }
+}
+
+:root {
+  --bg-primary: #020205;
+  --bg-secondary: #08080D;
+  --surface: #0A080D;
+  --surface-elevated: #120E18;
+  --accent-red: #EF4444;
+  --accent-red-bright: #F87171;
+  --accent-red-dark: #DC2626;
+  --accent-red-deep: #7F1D1D;
+  --accent-blue: #FF2D95;
+  --accent-blue-bright: #FF4FB3;
+  --accent-violet: #9B5CFF;
+  --accent-violet-bright: #B98CFF;
+  --accent-cyan: #FF4FB3;
+  --text-primary: #FFFFFF;
+  --text-secondary: #D5D5DD;
+  --text-muted: #A6A6B3;
+  --border: #211826;
+}
+
+/* ===== motion tuning (CSS-only effects) =====
+   Tunable values for every CSS-driven animation in the transition system -
+   the CSS-side counterpart to src/config/motion.js (that file holds the
+   JS/framer-motion/Three.js timings; this block holds the ones that only
+   exist as CSS, since a plain Vite+Tailwind project has no CSS-in-JS bridge
+   to share one file between them). Change a value here to retune every
+   .reveal-text / button / cursor effect at once. Automatically respects
+   prefers-reduced-motion via the existing global block further down, which
+   forces all transition/animation durations to ~0 regardless of these
+   values. */
+:root {
+  --reveal-duration: 0.8s;
+  --reveal-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --reveal-translate-y: 24px;
+  --reveal-scale-from: 0.97;
+  --reveal-blur: 6px;
+
+  --button-glow-duration: 0.3s;
+  --button-press-duration: 0.12s;
+
+  --cursor-pulse-duration: 0.5s;
+}
+
+/* Base reset - deliberately inside @layer base so Tailwind's utility layer
+   (pt-32, p-8, px-6, ...) can still win as intended. A bare, unlayered `* {}`
+   rule here would always beat every layered Tailwind utility regardless of
+   source order or specificity (that's how CSS cascade layers work), which
+   was silently zeroing every padding/margin utility across the entire site. */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+}
+
+html {
+  /* Scroll easing is handled by Lenis (see useSmoothScroll) once it's
+     active, so it drives the actual scroll animation itself; leaving the
+     CSS smooth-scroll on top of that double-animates and causes stutter on
+     nav clicks and browser find-on-page jumps. Lenis falls back to native
+     scrolling for prefers-reduced-motion, and its own inertia stands in for
+     this before that point. */
+  scroll-behavior: auto;
+  overflow-x: hidden;
+}
+
+/* Lenis's own state classes on <html> - recommended setup from its docs.
+   `lenis-smooth` momentarily forces scroll-behavior back to auto so a
+   native smooth-scroll request (e.g. keyboard focus) can't fight Lenis's
+   own easing; `lenis-stopped` is used while Lenis has scrolling locked. */
+html.lenis, html.lenis body {
+  height: auto;
+}
+
+html.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+html.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+html.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-dark-bg);
+  color: var(--color-text-secondary);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(255, 45, 149, 0.3);
+  color: white;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-dark-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #1BA8E0, #A863EC);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #30AEF7, #C084FC);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.canvas-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.canvas-container.interactive {
+  pointer-events: auto;
+}
+
+.section {
+  position: relative;
+  z-index: 10;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.glass-panel {
+  background: rgba(10, 15, 26, 0.7);
+  border: 1px solid rgba(26, 31, 46, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.glass-panel-hover:hover {
+  border-color: rgba(27, 168, 224, 0.3);
+  box-shadow: 
+    0 0 30px rgba(27, 168, 224, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #1BA8E0 0%, #A863EC 50%, #30AEF7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-cyan {
+  background: linear-gradient(135deg, #1BA8E0 0%, #30AEF7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-violet {
+  background: linear-gradient(135deg, #A863EC 0%, #C084FC 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.btn-primary {
+  @apply relative px-8 py-3 rounded-lg font-medium text-sm uppercase tracking-wider transition-all duration-300;
+  background: linear-gradient(135deg, rgba(27, 168, 224, 0.15) 0%, rgba(168, 99, 236, 0.15) 100%);
+  border: 1px solid rgba(27, 168, 224, 0.3);
+  color: #1BA8E0;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(27, 168, 224, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-primary:hover::before {
+  left: 100%;
+}
+
+.btn-primary:hover {
+  border-color: #1BA8E0;
+  box-shadow:
+    0 0 20px rgba(27, 168, 224, 0.3),
+    0 0 40px rgba(168, 99, 236, 0.2);
+  transform: translateY(-2px) scale(1.02);
+}
+
+/* Tiny press-down + a quick glow pulse on click, spring-like via the
+   existing transition-all timing rather than a discrete keyframe so it
+   never feels laggy - the box-shadow flash and the scale-down both start
+   the instant :active applies. */
+.btn-primary:active {
+  transform: translateY(0) scale(0.97);
+  transition-duration: var(--button-press-duration);
+  /* Matches the pink/violet colors the later theme-override block gives
+     .btn-primary:hover (rather than this rule's own base cyan palette) so
+     the click pulse doesn't visibly flip color from the hover glow that
+     was already showing. */
+  box-shadow:
+    0 0 28px rgba(255, 45, 149, 0.4),
+    0 0 52px rgba(155, 92, 255, 0.28);
+}
+
+.btn-secondary {
+  @apply relative px-6 py-2.5 rounded-lg font-medium text-sm uppercase tracking-wider transition-all duration-300;
+  background: rgba(10, 15, 26, 0.8);
+  border: 1px solid rgba(26, 31, 46, 0.8);
+  color: #676769;
+  overflow: hidden;
+}
+
+/* Same sheen-sweep as .btn-primary::before, so the secondary button gets
+   the same "background gradient movement on hover" micro-interaction
+   instead of only a flat color/border transition. */
+.btn-secondary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 45, 149, 0.12), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-secondary:hover::before {
+  left: 100%;
+}
+
+.btn-secondary:hover {
+  border-color: rgba(27, 168, 224, 0.3);
+  color: #1BA8E0;
+  background: rgba(27, 168, 224, 0.05);
+  transform: translateY(-1px) scale(1.02);
+}
+
+.btn-secondary:active {
+  transform: translateY(0) scale(0.97);
+  transition-duration: var(--button-press-duration);
+}
+
+.cursor {
+  position: fixed;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  mix-blend-mode: difference;
+  transition: transform 0.1s ease, width 0.3s ease, height 0.3s ease, border-color 0.3s ease;
+  transform: translate(-50%, -50%);
+}
+
+.cursor::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1BA8E0;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px #1BA8E0, 0 0 20px #1BA8E0;
+}
+
+.cursor.ring {
+  width: 48px;
+  height: 48px;
+  border: 2px solid #1BA8E0;
+  background: transparent;
+}
+
+.cursor.ring::before {
+  width: 4px;
+  height: 4px;
+}
+
+/* Grab/grabbing states (src/components/CustomCursor.jsx's
+   window.__setCursorOverride, used by the Tech Stack physics field to show
+   feedback while hovering/dragging a technology ball). Open ring = ready to
+   grab, a tighter closed ring = actively holding - the same open/closed
+   hand metaphor as a native grab/grabbing cursor, without breaking from the
+   site's own cursor design to show a plain OS one. */
+.cursor.grab {
+  width: 52px;
+  height: 52px;
+  border: 2px solid var(--accent-blue);
+  background: rgba(255, 45, 149, 0.08);
+}
+
+.cursor.grab::before {
+  width: 4px;
+  height: 4px;
+}
+
+.cursor.grabbing {
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--accent-violet);
+  background: rgba(155, 92, 255, 0.16);
+}
+
+.cursor.grabbing::before {
+  width: 6px;
+  height: 6px;
+  background: var(--accent-violet);
+  box-shadow: 0 0 10px var(--accent-violet), 0 0 20px var(--accent-violet);
+}
+
+.cursor.view::after {
+  content: 'VIEW';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #1BA8E0;
+  font-family: var(--font-mono);
+  opacity: 0;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Click ripple/pulse (src/components/CustomCursor.jsx toggles this class
+   briefly on pointerdown). A separate ::after ring rather than reusing
+   .cursor.ring's own border, so it works layered on top of either the dot
+   or the hover ring state and always starts from the cursor's own size. */
+.cursor.pulse::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 1.5px solid #1BA8E0;
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 0.8;
+  animation: cursor-pulse-ripple var(--cursor-pulse-duration, 0.5s) ease-out;
+}
+
+@keyframes cursor-pulse-ripple {
+  from { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+  to { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+}
+
+/* Real native-cursor hiding while the custom cursor is active (toggled on
+   <html> by CustomCursor.jsx). `!important` is needed to reliably beat
+   `<a>`/`<button>` default UA-stylesheet pointer cursors. Never applied on
+   touch devices - CustomCursor doesn't mount at all there, so this class is
+   never added. */
+html.custom-cursor-active,
+html.custom-cursor-active body,
+html.custom-cursor-active * {
+  cursor: none !important;
+}
+
+@media (max-width: 768px) {
+  .cursor {
+    display: none !important;
+  }
+}
+
+.scanline-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9998;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  opacity: 0.5;
+}
+
+.vignette {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9997;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 50%,
+    rgba(1, 4, 11, 0.8) 100%
+  );
+}
+
+.noise-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9996;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* Nav-click page-transition overlay (src/components/PageTransitionOverlay.jsx) */
+.page-transition-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 4, 9, 0.86);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.page-transition-glow {
+  position: absolute;
+  width: 42vw;
+  height: 42vw;
+  min-width: 320px;
+  min-height: 320px;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.35;
+}
+
+.page-transition-glow-a {
+  top: -10%;
+  left: -10%;
+  background: radial-gradient(circle, var(--accent-blue) 0%, transparent 70%);
+  animation: page-transition-drift-a 1.4s ease-in-out infinite alternate;
+}
+
+.page-transition-glow-b {
+  bottom: -10%;
+  right: -10%;
+  background: radial-gradient(circle, var(--accent-violet) 0%, transparent 70%);
+  animation: page-transition-drift-b 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes page-transition-drift-a {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(6%, 4%) scale(1.08); }
+}
+
+@keyframes page-transition-drift-b {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(-5%, -6%) scale(1.05); }
+}
+
+.intro-screen {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(27, 168, 224, 0.08), transparent 18rem),
+    radial-gradient(circle at 50% 42%, rgba(48, 174, 247, 0.05), transparent 28rem),
+    linear-gradient(180deg, #030812 0%, #01040b 52%, #02050d 100%);
+}
+
+.intro-atmosphere {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.025), transparent 10rem),
+    radial-gradient(circle at 50% 42%, rgba(27, 168, 224, 0.07), transparent 20rem),
+    radial-gradient(circle at 50% 80%, rgba(10, 18, 34, 0.28), transparent 40rem);
+}
+
+/* Staged intro sequence (src/components/LoadingScreen.jsx) - the whole
+   screen and each piece of content step in as the `.intro-step-N` class
+   advances (0: mount: core visible, everything else hidden. 1: neon line.
+   2: "AI DEVELOPER" label. 3: name. 4: fully revealed, progress bar running.
+   5: cinematic dismiss beat - core brightens, a radial flash expands, the
+   whole screen fades/scales away to reveal the real site already rendering
+   underneath). Every duration here is intentionally short (see
+   DURATION.introTotal/introMaxWait/introDismissDuration) and automatically
+   collapses further under prefers-reduced-motion via the global
+   reduced-motion block above. */
+.intro-screen {
+  transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.intro-step-5.intro-screen {
+  opacity: 0;
+  transform: scale(1.04);
+  transition-delay: 0.25s;
+}
+
+.intro-starfield {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.intro-star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.5;
+  animation: intro-star-twinkle 3s ease-in-out infinite;
+}
+
+@keyframes intro-star-twinkle {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.8; }
+}
+
+/* Central AI-core visual - pure CSS (no <Canvas>, see the component's own
+   header comment for why). Visible from mount, not step-gated, since it's
+   the persistent centrepiece the rest of the sequence reveals around. */
+.intro-core {
+  position: relative;
+  width: clamp(80px, 9vw, 140px);
+  height: clamp(80px, 9vw, 140px);
+  margin-bottom: 0.5rem;
+}
+
+.intro-core-glow {
+  position: absolute;
+  inset: -20%;
+  border-radius: 50%;
+  filter: blur(8px);
+  background: radial-gradient(circle, rgba(255, 45, 149, 0.25), transparent 70%);
+  animation: intro-orb-pulse 2.4s ease-in-out infinite reverse;
+}
+
+.intro-core-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid transparent;
+}
+
+.intro-core-ring-outer {
+  inset: -12%;
+  border-color: rgba(155, 92, 255, 0.3);
+  border-top-color: var(--accent-violet-bright);
+  animation: rotate 8s linear infinite;
+}
+
+.intro-core-ring-inner {
+  inset: 8%;
+  border-color: rgba(255, 45, 149, 0.25);
+  border-right-color: var(--accent-blue-bright);
+  animation: rotate 5s linear infinite reverse;
+}
+
+.intro-core-particles {
+  position: absolute;
+  inset: -30%;
+  animation: rotate 6s linear infinite;
+}
+
+.intro-core-particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent-blue-bright);
+  box-shadow: 0 0 6px var(--accent-blue);
+  transform: rotate(calc(var(--i) * 45deg)) translateX(58px);
+}
+
+.intro-core-orb {
+  position: absolute;
+  inset: 30%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--accent-blue-bright), var(--accent-blue) 45%, var(--accent-violet) 100%);
+  box-shadow: 0 0 20px var(--accent-blue), 0 0 40px rgba(155, 92, 255, 0.5);
+  animation: intro-orb-pulse 2.4s ease-in-out infinite;
+  transition: transform 0.25s ease-out, box-shadow 0.25s ease-out;
+}
+
+@keyframes intro-orb-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+
+/* Inert until step 5 - the dismiss beat's radial flash. */
+.intro-core-flash {
+  position: absolute;
+  inset: 30%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.9), var(--accent-blue-bright) 40%, transparent 75%);
+  opacity: 0;
+  transform: scale(0.3);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  transition-delay: 0.1s;
+}
+
+.intro-step-5 .intro-core-orb {
+  transform: scale(1.35);
+  box-shadow: 0 0 40px var(--accent-blue-bright), 0 0 80px var(--accent-violet-bright);
+}
+
+.intro-step-5 .intro-core-flash {
+  opacity: 0.9;
+  transform: scale(6);
+}
+
+.intro-neon-line {
+  width: 2px;
+  height: 0;
+  background: linear-gradient(180deg, transparent, var(--accent-blue), var(--accent-violet), transparent);
+  box-shadow: 0 0 12px var(--accent-blue), 0 0 24px var(--accent-violet);
+  opacity: 0;
+  transition: height 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+.intro-step-1 .intro-neon-line,
+.intro-step-2 .intro-neon-line,
+.intro-step-3 .intro-neon-line,
+.intro-step-4 .intro-neon-line,
+.intro-step-5 .intro-neon-line {
+  height: 56px;
+  opacity: 1;
+}
+
+.intro-label {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.intro-step-2 .intro-label,
+.intro-step-3 .intro-label,
+.intro-step-4 .intro-label,
+.intro-step-5 .intro-label {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.intro-name {
+  opacity: 0;
+  transform: translateY(16px) scale(0.98);
+  filter: blur(4px);
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.intro-step-3 .intro-name,
+.intro-step-4 .intro-name,
+.intro-step-5 .intro-name {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+
+.intro-progress {
+  opacity: 0;
+  margin-top: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  transition: opacity 0.4s ease;
+}
+
+.intro-step-1 .intro-progress,
+.intro-step-2 .intro-progress,
+.intro-step-3 .intro-progress,
+.intro-step-4 .intro-progress,
+.intro-step-5 .intro-progress {
+  opacity: 1;
+}
+
+.intro-progress-bar {
+  width: clamp(160px, 40vw, 240px);
+}
+
+/* The fill's width is written every animation frame via a ref (see the
+   component), not toggled through a single CSS state change - the
+   inherited `.progress-fill` transition would fight that live value and
+   smear into a laggy trail, so it's turned off for this one usage only.
+   `.progress-bar`/`.progress-fill` themselves are shared, pre-existing,
+   currently-unused-elsewhere classes (see the base "Progress bars" rules
+   above) - reused as-is otherwise. */
+.intro-progress .progress-fill {
+  transition: none;
+}
+
+.intro-status-text {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent-blue-bright);
+  opacity: 0.85;
+}
+
+/* Reveal-on-scroll: hidden until the section it lives in gains
+   `.is-visible` (toggled by the scroll observer in App.jsx), then fades and
+   slides into place - the "cinematic" transition between sections as the
+   user scrolls through the single continuous page. */
+.reveal-text {
+  /* Tunable via CSS custom properties (see the "motion tuning" block below)
+     rather than hardcoded, so the whole site's entrance feel can be
+     retuned from one place. */
+  opacity: 0;
+  transform: translateY(var(--reveal-translate-y, 24px)) scale(var(--reveal-scale-from, 0.97));
+  filter: blur(var(--reveal-blur, 6px));
+  transition:
+    opacity var(--reveal-duration, 0.8s) var(--reveal-ease, cubic-bezier(0.16, 1, 0.3, 1)),
+    transform var(--reveal-duration, 0.8s) var(--reveal-ease, cubic-bezier(0.16, 1, 0.3, 1)),
+    filter var(--reveal-duration, 0.8s) var(--reveal-ease, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.reveal-text.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+
+.section.is-visible .reveal-text {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+
+.reveal-text-word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(100%);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-text-word.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.glitch {
+  position: relative;
+}
+
+.glitch::before,
+.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+}
+
+.glitch::before {
+  color: #1BA8E0;
+  animation: glitch-1 3s infinite linear alternate-reverse;
+}
+
+.glitch::after {
+  color: #A863EC;
+  animation: glitch-2 2.5s infinite linear alternate-reverse;
+}
+
+@keyframes glitch-1 {
+  0%, 100% { clip-path: polygon(0 20%, 100% 20%, 100% 25%, 0 25%); transform: translateX(-2px); }
+  10% { clip-path: polygon(0 40%, 100% 40%, 100% 45%, 0 45%); transform: translateX(2px); }
+  20% { clip-path: polygon(0 60%, 100% 60%, 100% 65%, 0 65%); transform: translateX(-1px); }
+  30% { clip-path: polygon(0 80%, 100% 80%, 100% 85%, 0 85%); transform: translateX(1px); }
+  40% { clip-path: polygon(0 10%, 100% 10%, 100% 15%, 0 15%); transform: translateX(-2px); }
+  50% { clip-path: polygon(0 30%, 100% 30%, 100% 35%, 0 35%); transform: translateX(2px); }
+  60% { clip-path: polygon(0 50%, 100% 50%, 100% 55%, 0 55%); transform: translateX(-1px); }
+  70% { clip-path: polygon(0 70%, 100% 70%, 100% 75%, 0 75%); transform: translateX(1px); }
+  80% { clip-path: polygon(0 90%, 100% 90%, 100% 95%, 0 95%); transform: translateX(-2px); }
+  90% { clip-path: polygon(0 5%, 100% 5%, 100% 10%, 0 10%); transform: translateX(2px); }
+}
+
+@keyframes glitch-2 {
+  0%, 100% { clip-path: polygon(0 25%, 100% 25%, 100% 30%, 0 30%); transform: translateX(2px); }
+  15% { clip-path: polygon(0 45%, 100% 45%, 100% 50%, 0 50%); transform: translateX(-2px); }
+  30% { clip-path: polygon(0 65%, 100% 65%, 100% 70%, 0 70%); transform: translateX(1px); }
+  45% { clip-path: polygon(0 85%, 100% 85%, 100% 90%, 0 90%); transform: translateX(-1px); }
+  60% { clip-path: polygon(0 15%, 100% 15%, 100% 20%, 0 20%); transform: translateX(2px); }
+  75% { clip-path: polygon(0 35%, 100% 35%, 100% 40%, 0 40%); transform: translateX(-2px); }
+  90% { clip-path: polygon(0 55%, 100% 55%, 100% 60%, 0 60%); transform: translateX(1px); }
+}
+
+.orbital-ring {
+  animation: orbital-rotate 20s linear infinite;
+}
+
+@keyframes orbital-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.particle-trail {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #1BA8E0;
+  box-shadow: 0 0 10px #1BA8E0, 0 0 20px #1BA8E0;
+  pointer-events: none;
+  animation: trail-fade 0.5s ease-out forwards;
+}
+
+@keyframes trail-fade {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0); }
+}
+
+/* Holographic panel styles */
+.hologram-panel {
+  background: linear-gradient(135deg, rgba(27, 168, 224, 0.03) 0%, rgba(168, 99, 236, 0.02) 100%);
+  border: 1px solid rgba(27, 168, 224, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  position: relative;
+  overflow: hidden;
+}
+
+.hologram-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(rgba(27, 168, 224, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(27, 168, 224, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+.hologram-panel::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(27, 168, 224, 0.4), transparent);
+  animation: scan 3s linear infinite;
+}
+
+/* Corner brackets for holographic panels */
+.holo-corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(27, 168, 224, 0.3);
+}
+
+.holo-corner.tl { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+.holo-corner.tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+.holo-corner.bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+.holo-corner.br { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+/* Section label styles */
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(27, 168, 224, 0.7);
+  white-space: nowrap;
+  text-align: center;
+  padding: 0.25rem 0.75rem;
+  background: rgba(10, 15, 26, 0.8);
+  border: 1px solid rgba(27, 168, 224, 0.2);
+  border-radius: 9999px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.section-label.active {
+  color: #1BA8E0;
+  border-color: #1BA8E0;
+  box-shadow: 0 0 20px rgba(27, 168, 224, 0.2);
+}
+
+/* Hologram text */
+.hologram-text {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 2;
+  color: rgba(27, 168, 224, 0.8);
+  text-shadow: 0 0 10px rgba(27, 168, 224, 0.5);
+}
+
+.hologram-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 1rem;
+}
+
+.hologram-line span:first-child {
+  color: rgba(27, 168, 224, 0.6);
+}
+
+.hologram-line span:last-child {
+  color: #1BA8E0;
+  font-weight: 500;
+}
+
+/* Progress bars */
+.progress-bar {
+  height: 4px;
+  background: rgba(26, 31, 46, 0.8);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  animation: scan 2s linear infinite;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1BA8E0, #A863EC);
+  border-radius: 2px;
+  transition: width 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Terminal styles */
+.terminal {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.7;
+  background: rgba(1, 4, 11, 0.95);
+  border: 1px solid rgba(26, 31, 46, 0.8);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.terminal-header {
+  background: rgba(10, 15, 26, 0.9);
+  border-bottom: 1px solid rgba(26, 31, 46, 0.8);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.terminal-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.terminal-dot.red { background: #FF5F56; }
+.terminal-dot.yellow { background: #FFBD2E; }
+.terminal-dot.green { background: #27C93F; }
+
+.terminal-title {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.terminal-body {
+  padding: 1.5rem;
+  color: var(--color-text-secondary);
+}
+
+.terminal-prompt {
+  color: #1BA8E0;
+}
+
+.terminal-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: inherit;
+  width: 100%;
+  caret-color: #1BA8E0;
+}
+
+/* Card styles */
+.card {
+  background: rgba(10, 15, 26, 0.7);
+  border: 1px solid rgba(26, 31, 46, 0.8);
+  border-radius: 12px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  border-color: rgba(27, 168, 224, 0.3);
+  box-shadow: 
+    0 0 30px rgba(27, 168, 224, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Tag styles */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.tag-cyan {
+  color: #1BA8E0;
+  background: rgba(27, 168, 224, 0.1);
+  border-color: rgba(27, 168, 224, 0.2);
+}
+
+.tag-violet {
+  color: #A863EC;
+  background: rgba(168, 99, 236, 0.1);
+  border-color: rgba(168, 99, 236, 0.2);
+}
+
+.tag-gray {
+  color: #676769;
+  background: rgba(103, 103, 105, 0.1);
+  border-color: rgba(103, 103, 105, 0.2);
+}
+
+.tag-white {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.tag:hover {
+  transform: scale(1.05);
+}
+
+/* Focus styles for accessibility */
+:focus-visible {
+  outline: 2px solid #1BA8E0;
+  outline-offset: 2px;
+}
+
+/* Utility for text gradient */
+.gradient-text {
+  background: linear-gradient(135deg, #1BA8E0 0%, #A863EC 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-cyan {
+  background: linear-gradient(135deg, #1BA8E0 0%, #30AEF7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-violet {
+  background: linear-gradient(135deg, #A863EC 0%, #C084FC 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Neon pink / purple "futuristic AI developer" theme overrides.
+   Existing structural utility classes intentionally remain unchanged - only
+   color values are replaced here. Red is kept available as a token but is
+   deliberately used in at most one or two small, occasional spots below,
+   never as a dominant color. */
+::selection { background: rgba(255, 45, 149, 0.28); }
+
+::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--accent-violet), var(--accent-blue-bright));
+}
+
+.glass-panel,
+.card {
+  background: rgba(10, 13, 18, 0.82);
+  border-color: rgba(255, 45, 149, 0.18);
+}
+
+.glass-panel-hover:hover,
+.card:hover {
+  border-color: rgba(255, 45, 149, 0.4);
+  box-shadow: 0 0 30px rgba(255, 45, 149, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.text-gradient,
+.gradient-text {
+  background: linear-gradient(135deg, var(--accent-blue-bright) 0%, var(--accent-violet) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-cyan,
+.gradient-text-cyan {
+  background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-violet,
+.gradient-text-violet {
+  background: linear-gradient(135deg, var(--accent-violet) 0%, var(--accent-violet-bright) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, rgba(255, 45, 149, 0.18), rgba(155, 92, 255, 0.16));
+  border-color: rgba(255, 45, 149, 0.45);
+  color: var(--accent-blue-bright);
+}
+
+.btn-primary::before { background: linear-gradient(90deg, transparent, rgba(255, 79, 179, 0.22), transparent); }
+.btn-primary:hover { border-color: var(--accent-violet); color: var(--accent-violet-bright); box-shadow: 0 0 20px rgba(155, 92, 255, 0.24), 0 0 40px rgba(255, 45, 149, 0.16); }
+
+.btn-secondary { background: rgba(10, 13, 18, 0.88); border-color: rgba(255, 45, 149, 0.35); color: var(--text-secondary); }
+.btn-secondary:hover { border-color: rgba(255, 45, 149, 0.55); color: var(--accent-blue-bright); background: rgba(255, 45, 149, 0.08); }
+
+.cursor::before,
+.particle-trail { background: var(--accent-blue); box-shadow: 0 0 10px var(--accent-blue), 0 0 20px rgba(255, 45, 149, 0.6); }
+.cursor.ring { border-color: var(--accent-blue); }
+.cursor.view::after,
+.glitch::before { color: var(--accent-blue-bright); }
+.glitch::after { color: var(--accent-red); }
+
+.intro-screen {
+  background: radial-gradient(circle at 50% 42%, rgba(255, 45, 149, 0.08), transparent 18rem), radial-gradient(circle at 50% 42%, rgba(155, 92, 255, 0.05), transparent 28rem), linear-gradient(180deg, #050308 0%, #020205 52%, #04030a 100%);
+}
+.intro-atmosphere { background: radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.02), transparent 10rem), radial-gradient(circle at 50% 42%, rgba(255, 45, 149, 0.07), transparent 20rem), radial-gradient(circle at 50% 80%, rgba(18, 22, 40, 0.24), transparent 40rem); }
+
+.hologram-panel { background: linear-gradient(135deg, rgba(255, 45, 149, 0.04), rgba(155, 92, 255, 0.03)); border-color: rgba(255, 45, 149, 0.22); }
+.hologram-panel::before { background-image: linear-gradient(rgba(255, 45, 149, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 45, 149, 0.025) 1px, transparent 1px); }
+.hologram-panel::after { background: linear-gradient(90deg, transparent, rgba(255, 79, 179, 0.35), transparent); }
+.holo-corner { border-color: rgba(255, 45, 149, 0.32); }
+.section-label { color: rgba(255, 79, 179, 0.78); background: rgba(10, 13, 18, 0.86); border-color: rgba(255, 45, 149, 0.3); }
+.section-label.active { color: var(--accent-blue-bright); border-color: var(--accent-blue); box-shadow: 0 0 20px rgba(255, 45, 149, 0.22); }
+.hologram-text, .hologram-line span:last-child { color: rgba(255, 79, 179, 0.85); text-shadow: 0 0 10px rgba(255, 79, 179, 0.4); }
+.hologram-line span:first-child { color: rgba(255, 45, 149, 0.6); }
+.progress-bar { background: rgba(20, 24, 34, 0.85); }
+.progress-fill { background: linear-gradient(90deg, var(--accent-blue), var(--accent-violet)); }
+.terminal { background: rgba(3, 4, 6, 0.96); border-color: rgba(255, 45, 149, 0.28); }
+.terminal-header { background: rgba(10, 13, 18, 0.94); border-color: rgba(255, 45, 149, 0.28); }
+.terminal-prompt { color: var(--accent-blue-bright); }
+.terminal-input { caret-color: var(--accent-blue-bright); }
+.tag-cyan { color: var(--accent-cyan); background: rgba(255, 79, 179, 0.1); border-color: rgba(255, 79, 179, 0.25); }
+.tag-violet { color: var(--accent-violet-bright); background: rgba(155, 92, 255, 0.1); border-color: rgba(155, 92, 255, 0.25); }
+:focus-visible { outline-color: var(--accent-blue); }
