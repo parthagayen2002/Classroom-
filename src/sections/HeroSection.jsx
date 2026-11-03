@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { heroContent } from '@/data/content';
 import { SolarSystem } from '@/three/components/SolarSystem';
+import { useResponsiveTier } from '@/hooks/useResponsiveTier';
 
 const socialIcons = {
   github: (
@@ -31,8 +32,19 @@ const socialIcons = {
 // alone can hide pixels but can't relocate where the Sun itself appears.
 const SOLAR_SYSTEM_EDGE_MASK = 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.4) 14%, #000 42%)';
 
+// Phones/tablets: the Solar System is its own full-width panel below the
+// text, so it only needs to fade out at its top and bottom edges.
+const SOLAR_SYSTEM_INLINE_MASK = 'linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%)';
+
 export function HeroSection({ isVisible, sectionProgressRef }) {
   const { eyebrow, name, tagline, paragraph, meta, skills, socials } = heroContent;
+  // Below desktop width there isn't room beside the text column, and as a
+  // faded background behind the text the planets could neither be seen
+  // clearly nor tapped. So on phones/tablets it moves into its own panel
+  // under the text instead. Only one of the two is ever mounted, so there's
+  // never a second, hidden WebGL scene running.
+  const { tier } = useResponsiveTier();
+  const isInline = tier !== 'desktop';
 
   return (
     <section
@@ -47,11 +59,12 @@ export function HeroSection({ isVisible, sectionProgressRef }) {
           the page) and only fading out on its left edge, well clear of the
           name/description column. Confined to the Home section only (sized
           by #home, not the viewport), so About/Experience/etc are
-          untouched. Faded on small screens where there's no room to push it
-          aside without sitting on top of the text. */}
-      <div className="absolute inset-y-0 right-0 z-0 w-full lg:w-[68%] opacity-40 sm:opacity-60 lg:opacity-100">
-        <SolarSystem edgeMask={SOLAR_SYSTEM_EDGE_MASK} sectionProgressRef={sectionProgressRef} />
-      </div>
+          untouched. Desktop only - see `isInline` above. */}
+      {!isInline && (
+        <div className="absolute inset-y-0 right-0 z-0 w-[68%]">
+          <SolarSystem edgeMask={SOLAR_SYSTEM_EDGE_MASK} sectionProgressRef={sectionProgressRef} />
+        </div>
+      )}
 
       {/* Dark readability gradient - keeps the left-column text legible
           regardless of what the solar system is doing behind it, without
@@ -143,12 +156,32 @@ export function HeroSection({ isVisible, sectionProgressRef }) {
             </div>
           </div>
         </div>
+
+        {/* Phones/tablets: the Solar System as its own full-bleed panel
+            (negative margins cancel the section's side padding). It opts
+            back into pointer events since this wrapper turns them off.
+            Deliberately not `.reveal-text`: that animates a transform/filter,
+            which would turn this box into the containing block for the
+            planet info panel's position:fixed bottom sheet and trap it in
+            here instead of at the bottom of the screen. */}
+        {isInline && (
+          <div className="pointer-events-auto relative mt-10 -mx-6 md:-mx-12 h-[46svh] min-h-[300px] max-h-[520px]">
+            <SolarSystem
+              variant="inline"
+              edgeMask={SOLAR_SYSTEM_INLINE_MASK}
+              sectionProgressRef={sectionProgressRef}
+            />
+          </div>
+        )}
       </div>
 
       <motion.button
         type="button"
         onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })}
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 text-slate-500 hover:text-primary-cyan transition-colors cursor-pointer"
+        // Desktop only: on phones/tablets the bottom of the hero is the
+        // Solar System panel, which this cue would sit on top of - and a
+        // swipe is the obvious gesture on touch anyway.
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 hidden lg:flex flex-col items-center gap-2 text-slate-500 hover:text-primary-cyan transition-colors cursor-pointer"
         animate={{ y: [0, 8, 0] }}
         transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
         aria-label="Scroll to About section"

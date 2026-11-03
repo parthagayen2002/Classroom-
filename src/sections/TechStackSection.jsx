@@ -17,14 +17,21 @@ export function TechStackSection({ isVisible }) {
   return (
     <section
       id="techstack"
-      className={`section relative px-6 md:px-12 lg:px-24 pt-32 pb-20 ${isVisible ? 'is-visible' : ''}`}
+      // Taller than one screen on phones/tablets: a portrait viewport is too
+      // narrow to fit all the orbs in one screen without them burying each
+      // other.
+      className={`section relative px-6 md:px-12 lg:px-24 pt-32 pb-20 max-lg:min-h-[125svh] ${isVisible ? 'is-visible' : ''}`}
       aria-labelledby="techstack-heading"
     >
-      {/* Fills the section; the physics field's own bounds are derived from
-          exactly this box's live pixel size (see TechCloud.jsx). Below the
-          heading in DOM order (and therefore in paint order, since neither
-          has an explicit z-index) so the heading stays legibly on top. */}
-      <div className="absolute inset-0">
+      {/* The physics field's own bounds are derived from exactly this box's
+          live pixel size (see TechCloud.jsx). Fills the whole section on
+          desktop, where the field is wide enough to roam around the
+          heading; on phones and tablets it starts below the heading
+          instead, since a narrower field otherwise always has orbs sitting
+          on the title. Below the heading in DOM order (and therefore in
+          paint order, since neither has an explicit z-index) so the
+          heading stays on top. */}
+      <div className="absolute inset-x-0 bottom-0 top-56 md:top-72 lg:top-0">
         <TechCloud isVisible={isVisible} />
       </div>
 

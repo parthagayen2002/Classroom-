@@ -842,7 +842,7 @@ function PlanetPanel({ planet, onClose, prefersReducedMotion }) {
   );
 }
 
-function SolarSystemInner({ edgeMask, sectionProgressRef }) {
+function SolarSystemInner({ edgeMask, sectionProgressRef, variant }) {
   const { tier, prefersReducedMotion } = useResponsiveTier();
   const { isTouchDevice } = usePointerCapabilities();
   const [selected, setSelected] = useState(null);
@@ -850,7 +850,15 @@ function SolarSystemInner({ edgeMask, sectionProgressRef }) {
   // OrbitControls comment below), so this default framing has to be close
   // enough on its own for planet surfaces - continents, bands, the Great Red
   // Spot - to actually be visible without any way to zoom in further.
-  const cameraDistance = tier === 'mobile' ? 14.5 : tier === 'tablet' ? 13 : 11.5;
+  //
+  // The 'inline' variant (phones/tablets, a short full-width panel below the
+  // hero text - see HeroSection.jsx) pulls back much further instead: that
+  // box is only about as tall as it is wide, so the close framing would show
+  // little more than the Sun. These distances fit roughly out to Jupiter on
+  // a phone and the whole system on a tablet.
+  const cameraDistance = variant === 'inline'
+    ? (tier === 'mobile' ? 21 : 19)
+    : tier === 'mobile' ? 14.5 : tier === 'tablet' ? 13 : 11.5;
 
   // Re-clicking the already-selected planet toggles the panel closed
   // instead of just re-selecting the same planet (a visual no-op today).
@@ -1017,8 +1025,12 @@ function SolarSystemInner({ edgeMask, sectionProgressRef }) {
           stays reserved for page scroll, see the touchAction/OrbitControls
           notes above), so there's no touch-specific behaviour left to call
           out separately. */}
-      <p className="absolute bottom-6 right-6 text-right text-[10px] font-mono uppercase tracking-widest text-slate-500 pointer-events-none">
-        Compressed orbital scale — drag to explore
+      <p className={`absolute text-[10px] font-mono uppercase tracking-widest text-slate-500 pointer-events-none ${
+        variant === 'inline' ? 'bottom-3 inset-x-0 text-center' : 'bottom-6 right-6 text-right'
+      }`}>
+        {isTouchDevice
+          ? 'Tap a planet · drag sideways to rotate'
+          : 'Compressed orbital scale — drag to explore'}
       </p>
 
       <PlanetPanel planet={selected} onClose={() => setSelected(null)} prefersReducedMotion={prefersReducedMotion} />
@@ -1032,7 +1044,7 @@ function SolarSystemInner({ edgeMask, sectionProgressRef }) {
  * back to a static visual if WebGL is unavailable or the scene errors -
  * never blocks the rest of the page.
  */
-export function SolarSystem({ edgeMask, sectionProgressRef }) {
+export function SolarSystem({ edgeMask, sectionProgressRef, variant = 'background' }) {
   const [webglOk, setWebglOk] = useState(true);
 
   useEffect(() => {
@@ -1045,7 +1057,7 @@ export function SolarSystem({ edgeMask, sectionProgressRef }) {
 
   return (
     <SolarSystemBoundary fallback={<StaticFallback />}>
-      <SolarSystemInner edgeMask={edgeMask} sectionProgressRef={sectionProgressRef} />
+      <SolarSystemInner edgeMask={edgeMask} sectionProgressRef={sectionProgressRef} variant={variant} />
     </SolarSystemBoundary>
   );
 }

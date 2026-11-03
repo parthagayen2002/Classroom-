@@ -71,7 +71,11 @@ export function AvatarPortrait() {
         dpr={[1, 2]}
         camera={{ position: [0, 0.1, 6.6], fov: 32, near: 0.1, far: 20 }}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
-        style={{ touchAction: 'none' }}
+        // pan-y: a vertical swipe over the card scrolls the page like
+        // anywhere else. Dragging an arm or leg still works, because the
+        // avatar cancels the page scroll itself while a limb is held (see
+        // useDraggableLimbs in Avatar.jsx).
+        style={{ touchAction: 'pan-y' }}
       >
         {/* The CHITTHI card already has its own opaque panel background
             behind this canvas, so - unlike the fullscreen Solar System

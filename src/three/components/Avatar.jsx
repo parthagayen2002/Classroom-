@@ -504,6 +504,148 @@ function AvatarModel({ gltf, onLoad, basePosition, rotation, scale }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Draggable limbs (procedural humanoid only)
+//
+// Each arm and leg hangs from a pivot group at its joint (shoulder / hip).
+// Grabbing a limb and dragging swings it around that joint so it follows the
+// pointer in the screen plane; on release it springs back to hanging
+// straight down with a small wobble.
+//
+// Angles are rotations about the joint's local Z axis, 0 = hanging straight
+// down. A rotation of θ turns the "down" vector (0,-1) into (sinθ, -cosθ), so
+// the angle that points the limb at a local offset (dx, dy) is atan2(dx, -dy).
+// ---------------------------------------------------------------------------
+const LIMB_LIMITS = {
+  // Each limb can swing outward and well overhead, but only slightly in
+  // across the body, so it never clips through the torso.
+  leftArm: [-2.9, 0.45],
+  rightArm: [-0.45, 2.9],
+  leftLeg: [-1.25, 0.3],
+  rightLeg: [-0.3, 1.25],
+};
+const LIMB_FOLLOW_DAMP = 18; // how tightly a held limb tracks the pointer
+const LIMB_SPRING = 55;      // pull back to rest once released
+const LIMB_FRICTION = 6.5;   // low enough to leave a visible wobble
+
+function useDraggableLimbs() {
+  const { gl, camera, raycaster } = useThree();
+  const pivots = useRef({});           // name -> THREE.Group
+  const limbState = useRef({});        // name -> { angle, vel }
+  const dragRef = useRef(null);        // { name, grabAngle, startAngle }
+  const scratch = useRef({ plane: new THREE.Plane(), hit: new THREE.Vector3(), joint: new THREE.Vector3() });
+
+  const register = (name) => (node) => {
+    pivots.current[name] = node;
+    if (!limbState.current[name]) limbState.current[name] = { angle: 0, vel: 0 };
+  };
+
+  // Angle from a limb's joint to the pointer, in the joint's parent space.
+  // Returns null if the pointer ray misses the joint's plane.
+  const pointerAngle = (name, pointer) => {
+    const pivot = pivots.current[name];
+    if (!pivot?.parent) return null;
+    const { plane, hit, joint } = scratch.current;
+    pivot.getWorldPosition(joint);
+    plane.set(new THREE.Vector3(0, 0, 1), -joint.z);
+    raycaster.setFromCamera(pointer, camera);
+    if (!raycaster.ray.intersectPlane(plane, hit)) return null;
+    pivot.parent.worldToLocal(hit);
+    const dx = hit.x - pivot.position.x;
+    const dy = hit.y - pivot.position.y;
+    if (Math.hypot(dx, dy) < 1e-4) return null;
+    return Math.atan2(dx, -dy);
+  };
+
+  const endDrag = () => {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    window.__setCursorOverride?.(null);
+  };
+
+  // Releasing anywhere (even outside the canvas) ends the drag. On touch
+  // screens, a non-passive touchmove listener cancels page scrolling only
+  // while a limb is actually held, so swiping elsewhere on the card still
+  // scrolls the page normally.
+  useEffect(() => {
+    const el = gl.domElement;
+    const blockScrollWhileDragging = (e) => {
+      if (dragRef.current && e.cancelable) e.preventDefault();
+    };
+    window.addEventListener('pointerup', endDrag);
+    window.addEventListener('pointercancel', endDrag);
+    el.addEventListener('touchmove', blockScrollWhileDragging, { passive: false });
+    return () => {
+      window.removeEventListener('pointerup', endDrag);
+      window.removeEventListener('pointercancel', endDrag);
+      el.removeEventListener('touchmove', blockScrollWhileDragging);
+    };
+  }, [gl]);
+
+  // Props for a limb's grab target mesh.
+  const handlers = (name) => ({
+    onPointerDown: (e) => {
+      e.stopPropagation();
+      const grabAngle = pointerAngle(name, e.pointer);
+      if (grabAngle === null) return;
+      e.target?.setPointerCapture?.(e.pointerId);
+      // Store where on the limb it was grabbed, so the limb doesn't snap to
+      // point straight at the pointer the moment it's picked up.
+      dragRef.current = { name, grabAngle, startAngle: limbState.current[name].angle };
+      window.__setCursorOverride?.('grabbing');
+    },
+    onPointerOver: (e) => {
+      e.stopPropagation();
+      if (!dragRef.current) window.__setCursorOverride?.('grab');
+    },
+    onPointerOut: () => {
+      if (!dragRef.current) window.__setCursorOverride?.(null);
+    },
+  });
+
+  const update = (state, delta) => {
+    const dt = Math.min(delta, 1 / 30); // keep the spring stable after a frame hitch
+    const drag = dragRef.current;
+    for (const name of Object.keys(pivots.current)) {
+      const pivot = pivots.current[name];
+      const s = limbState.current[name];
+      if (!pivot || !s) continue;
+      const [min, max] = LIMB_LIMITS[name];
+
+      if (drag?.name === name) {
+        const now = pointerAngle(name, state.pointer);
+        if (now !== null) {
+          // Shortest signed difference, so crossing ±π doesn't flip the limb.
+          let diff = now - drag.grabAngle;
+          diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+          const target = THREE.MathUtils.clamp(drag.startAngle + diff, min, max);
+          const prev = s.angle;
+          s.angle = THREE.MathUtils.damp(s.angle, target, LIMB_FOLLOW_DAMP, dt);
+          s.vel = (s.angle - prev) / Math.max(dt, 1e-4); // carried into the release
+        }
+      } else if (s.angle !== 0 || s.vel !== 0) {
+        s.vel += (-LIMB_SPRING * s.angle - LIMB_FRICTION * s.vel) * dt;
+        s.angle = THREE.MathUtils.clamp(s.angle + s.vel * dt, min, max);
+        if (Math.abs(s.angle) < 1e-4 && Math.abs(s.vel) < 1e-3) { s.angle = 0; s.vel = 0; }
+      }
+      pivot.rotation.z = s.angle;
+    }
+  };
+
+  return { register, handlers, update };
+}
+
+// Invisible, deliberately fat hit area for a limb - the visible arms and legs
+// are only ~20px wide on a phone, too thin to grab reliably with a finger.
+function LimbGrabTarget({ position, length, radius = 0.26, handlers }) {
+  return (
+    <mesh position={position} {...handlers}>
+      <capsuleGeometry args={[radius, length, 2, 8]} />
+      <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
+    </mesh>
+  );
+}
+
 function AvatarPlaceholder({ basePosition, rotation, scale }) {
   const groupRef = useRef();
   const timeRef = useRef(0);
@@ -526,10 +668,12 @@ function AvatarPlaceholder({ basePosition, rotation, scale }) {
 
   const { camera } = useThree();
   const pointerActiveRef = useCanvasPointerActive();
+  const limbs = useDraggableLimbs();
 
   // Mouse tracking in world space
   useSafeFrame((state, delta) => {
     timeRef.current += delta;
+    limbs.update(state, delta);
 
     // Convert mouse to world space at avatar depth
     const mouse = state.pointer;
@@ -718,33 +862,38 @@ function AvatarPlaceholder({ basePosition, rotation, scale }) {
                 opacity={0.85}
               />
             </mesh>
-            <mesh position={[-0.06, -0.5, 0]} rotation={[0, 0, 0.08]} castShadow receiveShadow>
-              <capsuleGeometry args={[0.12, 0.72, 4, 10]} />
-              <meshPhysicalMaterial
-                color="#1a0e26"
-                emissive="#9B5CFF"
-                emissiveIntensity={0.2}
-                metalness={0.3}
-                roughness={0.45}
-                transparent
-                opacity={0.82}
-              />
-            </mesh>
-            {/* Hand - the arm was ending in a flat capsule cap, which read
-                as an amputated limb rather than an arm. A small sphere at
-                the wrist gives it an actual hand. */}
-            <mesh position={[-0.1, -0.92, 0]} castShadow receiveShadow>
-              <sphereGeometry args={[0.13, 12, 12]} />
-              <meshPhysicalMaterial
-                color="#1a0e26"
-                emissive="#FF2D95"
-                emissiveIntensity={0.22}
-                metalness={0.3}
-                roughness={0.45}
-                transparent
-                opacity={0.85}
-              />
-            </mesh>
+            {/* Arm pivot - rotates at the shoulder joint when dragged (see
+                useDraggableLimbs). The joint sphere above stays put. */}
+            <group ref={limbs.register('leftArm')}>
+              <mesh position={[-0.06, -0.5, 0]} rotation={[0, 0, 0.08]} castShadow receiveShadow>
+                <capsuleGeometry args={[0.12, 0.72, 4, 10]} />
+                <meshPhysicalMaterial
+                  color="#1a0e26"
+                  emissive="#9B5CFF"
+                  emissiveIntensity={0.2}
+                  metalness={0.3}
+                  roughness={0.45}
+                  transparent
+                  opacity={0.82}
+                />
+              </mesh>
+              {/* Hand - the arm was ending in a flat capsule cap, which read
+                  as an amputated limb rather than an arm. A small sphere at
+                  the wrist gives it an actual hand. */}
+              <mesh position={[-0.1, -0.92, 0]} castShadow receiveShadow>
+                <sphereGeometry args={[0.13, 12, 12]} />
+                <meshPhysicalMaterial
+                  color="#1a0e26"
+                  emissive="#FF2D95"
+                  emissiveIntensity={0.22}
+                  metalness={0.3}
+                  roughness={0.45}
+                  transparent
+                  opacity={0.85}
+                />
+              </mesh>
+              <LimbGrabTarget position={[-0.07, -0.58, 0]} length={0.7} handlers={limbs.handlers('leftArm')} />
+            </group>
           </group>
 
           <group ref={rightShoulderRef} position={[0.55, 0.3, 0]}>
@@ -760,30 +909,33 @@ function AvatarPlaceholder({ basePosition, rotation, scale }) {
                 opacity={0.85}
               />
             </mesh>
-            <mesh position={[0.06, -0.5, 0]} rotation={[0, 0, -0.08]} castShadow receiveShadow>
-              <capsuleGeometry args={[0.12, 0.72, 4, 10]} />
-              <meshPhysicalMaterial
-                color="#1a0e26"
-                emissive="#9B5CFF"
-                emissiveIntensity={0.2}
-                metalness={0.3}
-                roughness={0.45}
-                transparent
-                opacity={0.82}
-              />
-            </mesh>
-            <mesh position={[0.1, -0.92, 0]} castShadow receiveShadow>
-              <sphereGeometry args={[0.13, 12, 12]} />
-              <meshPhysicalMaterial
-                color="#1a0e26"
-                emissive="#FF2D95"
-                emissiveIntensity={0.22}
-                metalness={0.3}
-                roughness={0.45}
-                transparent
-                opacity={0.85}
-              />
-            </mesh>
+            <group ref={limbs.register('rightArm')}>
+              <mesh position={[0.06, -0.5, 0]} rotation={[0, 0, -0.08]} castShadow receiveShadow>
+                <capsuleGeometry args={[0.12, 0.72, 4, 10]} />
+                <meshPhysicalMaterial
+                  color="#1a0e26"
+                  emissive="#9B5CFF"
+                  emissiveIntensity={0.2}
+                  metalness={0.3}
+                  roughness={0.45}
+                  transparent
+                  opacity={0.82}
+                />
+              </mesh>
+              <mesh position={[0.1, -0.92, 0]} castShadow receiveShadow>
+                <sphereGeometry args={[0.13, 12, 12]} />
+                <meshPhysicalMaterial
+                  color="#1a0e26"
+                  emissive="#FF2D95"
+                  emissiveIntensity={0.22}
+                  metalness={0.3}
+                  roughness={0.45}
+                  transparent
+                  opacity={0.85}
+                />
+              </mesh>
+              <LimbGrabTarget position={[0.07, -0.58, 0]} length={0.7} handlers={limbs.handlers('rightArm')} />
+            </group>
           </group>
         </group>
       </group>
@@ -808,9 +960,13 @@ function AvatarPlaceholder({ basePosition, rotation, scale }) {
           all below it, which read as a torso ending abruptly in mid-air.
           Two separate capsules plus a small flattened foot each give the
           figure an actual stance instead of a floating lower half. */}
-      {[-0.16, 0.16].map((x) => (
-        <group key={x} position={[x, 0, 0]}>
-          <mesh castShadow receiveShadow position={[0, -0.15, 0]}>
+      {/* Each leg's group sits at its hip joint (y 0.3, just inside the hip
+          capsule) so a drag swings it from the hip; the meshes are offset
+          down by the same 0.3 to keep them exactly where they were. */}
+      {[['leftLeg', -0.16], ['rightLeg', 0.16]].map(([name, x]) => (
+        <group key={name} ref={limbs.register(name)} position={[x, 0.3, 0]}>
+          <LimbGrabTarget position={[0, -0.5, 0.03]} length={0.8} handlers={limbs.handlers(name)} />
+          <mesh castShadow receiveShadow position={[0, -0.45, 0]}>
             <capsuleGeometry args={[0.14, 0.85, 4, 8]} />
             <meshPhysicalMaterial
               color="#1a0e26"
@@ -822,7 +978,7 @@ function AvatarPlaceholder({ basePosition, rotation, scale }) {
               opacity={0.82}
             />
           </mesh>
-          <mesh castShadow receiveShadow position={[0, -0.68, 0.08]} scale={[1, 0.7, 1.6]}>
+          <mesh castShadow receiveShadow position={[0, -0.98, 0.08]} scale={[1, 0.7, 1.6]}>
             <sphereGeometry args={[0.15, 10, 10]} />
             <meshPhysicalMaterial
               color="#1a0e26"

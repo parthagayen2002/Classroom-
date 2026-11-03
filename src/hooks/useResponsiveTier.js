@@ -11,9 +11,24 @@ import { useEffect, useState } from 'react';
 // budgets, parallax magnitude); `prefersReducedMotion` gates anything that
 // moves the camera/parallaxes content on its own, independent of viewport
 // size, per the OS/browser accessibility preference.
+// Read synchronously for the initial state so a phone's very first render
+// already uses mobile sizing (camera distances, segment counts) instead of
+// rendering one desktop-sized frame and then visibly snapping.
+function readTier() {
+  if (typeof window === 'undefined' || !window.matchMedia) return 'desktop';
+  if (window.matchMedia('(max-width: 640px)').matches) return 'mobile';
+  if (window.matchMedia('(max-width: 1024px)').matches) return 'tablet';
+  return 'desktop';
+}
+
+function readReducedMotion() {
+  if (typeof window === 'undefined' || !window.matchMedia) return false;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 export function useResponsiveTier() {
-  const [tier, setTier] = useState('desktop');
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [tier, setTier] = useState(readTier);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(readReducedMotion);
 
   useEffect(() => {
     const mobile = window.matchMedia('(max-width: 640px)');

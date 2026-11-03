@@ -113,7 +113,7 @@ function createBalls(items, seedHalfWidth, seedHalfHeight) {
 const TOUCH_LONG_PRESS_MS = 150;
 const TOUCH_MOVE_CANCEL_PX = 8;
 
-function TechOrb({ ball, mouseWorldRef, interactionRadius, segments, allowDrag, isDraggedRef, onGrab, onRelease, isTouchDevice, tappedRef, onTap }) {
+function TechOrb({ ball, mouseWorldRef, interactionRadius, segments, labelSize = 10, allowDrag, isDraggedRef, onGrab, onRelease, isTouchDevice, tappedRef, onTap }) {
   const orbGroupRef = useRef(null);
   const coreRef = useRef(null);
   const glowRef = useRef(null);
@@ -323,7 +323,7 @@ function TechOrb({ ball, mouseWorldRef, interactionRadius, segments, allowDrag, 
           ref={labelRef}
           className="whitespace-nowrap font-mono uppercase tracking-wider text-white"
           style={{
-            fontSize: '10px',
+            fontSize: `${labelSize}px`,
             opacity: 0.32,
             textShadow: '0 0 5px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.95)',
           }}
@@ -577,6 +577,7 @@ function TechFieldScene({ tier, prefersReducedMotion, isTouchDevice, cameraDista
           mouseWorldRef={mouseWorldRef}
           interactionRadius={interactionRadius}
           segments={segments}
+          labelSize={tier === 'mobile' ? 8 : 10}
           allowDrag={allowDrag}
           isDraggedRef={draggedBallRef}
           onGrab={handleGrab}
@@ -673,7 +674,12 @@ export function TechCloud({ isVisible = true }) {
   // so it stays the same fixed screen size regardless of camera distance;
   // only the sphere's own on-screen size shrinks, which is exactly what
   // gives the balls room to spread out.
-  const cameraDistance = tier === 'mobile' ? 11.5 : tier === 'tablet' ? 9.5 : 10.8;
+  //
+  // On phones and tablets the field now sits below the heading in a taller
+  // section (see TechStackSection.jsx), so it's tall and fairly narrow;
+  // these distances keep each orb roughly 70px (phone) / 90px (tablet)
+  // across, small enough for all of them to spread out without piling up.
+  const cameraDistance = tier === 'mobile' ? 15 : tier === 'tablet' ? 17 : 10.8;
 
   return (
     <TechCloudBoundary>

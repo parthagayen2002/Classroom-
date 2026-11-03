@@ -7,7 +7,7 @@ export function Navigation({ activeSection, setActiveSection, isMobile, toggleMo
   return (
     <>
       <nav
-        className={`fixed top-6 left-1/2 -translate-x-1/2 z-40 hidden md:flex items-center gap-8 px-6 py-3 glass-panel transition-all duration-500 ${isMobile ? 'md:hidden' : ''}`}
+        className={`fixed top-6 left-1/2 -translate-x-1/2 z-40 hidden md:flex items-center gap-2 lg:gap-8 px-4 lg:px-6 py-3 glass-panel transition-all duration-500 ${isMobile ? 'md:hidden' : ''}`}
         role="navigation"
         aria-label="Main navigation"
       >
@@ -15,7 +15,7 @@ export function Navigation({ activeSection, setActiveSection, isMobile, toggleMo
           <button
             key={item.id}
             onClick={() => setActiveSection(item.id)}
-            className={`relative px-3 py-2 text-xs font-medium uppercase tracking-widest transition-all duration-300 ${
+            className={`relative whitespace-nowrap px-3 py-2 text-xs font-medium uppercase tracking-widest transition-all duration-300 ${
               activeSection === item.id
                 ? 'text-primary-cyan'
                 : 'text-slate-400 hover:text-primary-cyan/70'

@@ -28,6 +28,13 @@ const contactIcons = {
   ),
 };
 
+// Adds a <wbr> after each "@" and "/" so a long email or URL wraps at a
+// natural point on a narrow screen ("name@" / "gmail.com") rather than
+// mid-word. <wbr> is invisible and isn't included when the text is copied.
+function withBreakPoints(value) {
+  return value.split(/(?<=[@/])/).flatMap((part, i) => (i === 0 ? [part] : [<wbr key={i} />, part]));
+}
+
 export function ContactCard({ link, index, isVisible }) {
   const icon = contactIcons[link.icon] || contactIcons.mail;
   
@@ -43,18 +50,21 @@ export function ContactCard({ link, index, isVisible }) {
       whileTap={{ scale: 0.98 }}
       onClick={() => window.open(link.href, '_blank')}
     >
-      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-cyan/20 to-primary-violet/20 flex items-center justify-center text-primary-cyan group-hover:scale-110 transition-transform duration-300">
+      <div className="shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-primary-cyan/20 to-primary-violet/20 flex items-center justify-center text-primary-cyan group-hover:scale-110 transition-transform duration-300">
         {icon}
       </div>
-      
-      <div className="flex-1">
+
+      {/* min-w-0 + overflow-wrap:anywhere let a long value (the email
+          address) wrap inside the card on a phone instead of pushing the
+          card wider than the screen. */}
+      <div className="flex-1 min-w-0">
         <div className="text-xs font-mono uppercase tracking-widest text-primary-cyan/70 mb-1">
           {link.label}
         </div>
-        <div className="text-white font-medium">{link.value}</div>
+        <div className="text-white font-medium text-sm sm:text-base [overflow-wrap:anywhere]">{withBreakPoints(link.value)}</div>
       </div>
-      
-      <svg className="w-5 h-5 text-slate-500 group-hover:text-primary-cyan transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+      <svg className="shrink-0 w-5 h-5 text-slate-500 group-hover:text-primary-cyan transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
       </svg>
     </motion.button>

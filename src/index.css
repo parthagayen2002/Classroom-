@@ -205,9 +205,21 @@ body {
   position: relative;
   z-index: 10;
   min-height: 100vh;
+  /* Mobile browsers count the area behind their collapsing URL bar in
+     100vh, which pushes a section's bottom edge off-screen - svh is the
+     always-visible height. Browsers without svh keep the 100vh above. */
+  min-height: 100svh;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* A flex item's default min-width is its content's min-content width, so
+   one unbreakable string (e.g. the email address in Contact) could widen a
+   section's inner wrapper past a phone's screen edge. */
+.section > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .glass-panel {
